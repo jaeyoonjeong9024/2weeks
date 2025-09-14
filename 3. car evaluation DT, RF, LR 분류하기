@@ -1,0 +1,58 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OrdinalEncoder  # 👈 문자열을 숫자로 변환하는 도구 추가
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# -----------------------------
+# 1) 데이터 준비
+# -----------------------------
+
+# ⭐️ 1. Car Evaluation 데이터에 맞는 컬럼 이름으로 수정
+cols = ['buying', 'maint', 'doors', 'persons', 'lug_boot', 'safety', 'class']
+
+# ⭐️ 2. 파일 경로를 car_evaluation.csv로 변경 (파일이 Colab에 업로드되어 있어야 함)
+df = pd.read_csv("/content/drive/MyDrive/car_evaluation.csv", header=None, names=cols)
+
+# 문제지(X)와 정답지(y) 분리 (정답 컬럼 이름: 'class')
+X = df.drop(columns=["class"])
+y = df["class"]
+
+# ⭐️ 3. 모든 문자열 데이터를 숫자로 변환 (인코딩)
+# 'vhigh'는 3, 'high'는 2, 'med'는 1, 'low'는 0과 같이 숫자로 바꿔줍니다.
+encoder = OrdinalEncoder()
+X_encoded = encoder.fit_transform(X) # 문제지의 모든 컬럼을 숫자로 변환
+
+# ⭐️ 4. 인코딩된 데이터를 학습용/테스트용으로 분리
+X_train, X_test, y_train, y_test = train_test_split(
+    X_encoded, y, test_size=0.2, stratify=y, random_state=42
+)
+
+# -----------------------------
+# 2) 모델 구성 (이전과 동일)
+# -----------------------------
+dt = DecisionTreeClassifier(random_state=42)
+rf = RandomForestClassifier(n_estimators=200, random_state=42)
+lr = LogisticRegression(max_iter=1000) # 반복 횟수를 늘려 안정성 확보
+
+# -----------------------------
+# 3) 모델 학습 (이전과 동일)
+# -----------------------------
+# 숫자로 변환된 학습 데이터로 모델들을 학습시킵니다.
+dt.fit(X_train, y_train)
+rf.fit(X_train, y_train)
+lr.fit(X_train, y_train)
+
+# -----------------------------
+# 4) 모델 평가 (이전과 동일)
+# -----------------------------
+dt_acc = accuracy_score(y_test, dt.predict(X_test))
+rf_acc = accuracy_score(y_test, rf.predict(X_test))
+lr_acc = accuracy_score(y_test, lr.predict(X_test))
+
+print("=== Test Accuracy ===")
+print(f"Decision Tree : {dt_acc:.4f}")
+print(f"Random Forest : {rf_acc:.4f}")
+print(f"Logistic Reg. : {lr_acc:.4f}")
