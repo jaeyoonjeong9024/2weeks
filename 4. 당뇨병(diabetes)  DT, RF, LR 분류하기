@@ -1,0 +1,70 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline  # 👈 파이프라인 도구 추가
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# -----------------------------
+# 1) 데이터 준비
+# -----------------------------
+df = pd.read_csv("/content/drive/MyDrive/boston.csv", index_col=0)
+
+X = df.drop(columns=["PRICE"])
+y = df["PRICE"]
+
+# ⭐️ 1. 스케일링 전에 원본 데이터를 바로 학습용과 테스트용으로 분리합니다.
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# -----------------------------
+# 2) 모델 구성 (회귀 모델)
+# -----------------------------
+# 결정 트리와 랜덤 포레스트는 스케일링의 영향이 적으므로 그대로 사용합니다.
+dt_reg = DecisionTreeRegressor(random_state=42)
+rf_reg = RandomForestRegressor(n_estimators=200, random_state=42)
+
+# ⭐️ 2. StandardScaler와 LinearRegression을 파이프라인으로 묶습니다.
+# 이제 lr_reg 모델은 데이터를 받으면 알아서 스케일링 후 학습/예측을 수행합니다.
+lr_reg = make_pipeline(StandardScaler(), LinearRegression())
+
+# -----------------------------
+# 3) 모델 학습
+# -----------------------------
+# dt_reg와 rf_reg는 원본(분할된) 데이터로 학습합니다.
+dt_reg.fit(X_train, y_train)
+rf_reg.fit(X_train, y_train)
+# lr_reg는 파이프라인 내부에서 X_train을 스케일링한 후 학습합니다.
+lr_reg.fit(X_train, y_train)
+
+# -----------------------------
+# 4) 모델 평가 함수
+# -----------------------------
+def eval_reg(y_true, y_pred):
+    mae  = mean_absolute_error(y_true, y_pred)
+    mse = mean_squared_error(y_true, y_pred)
+    rmse = np.sqrt(mse)
+    r2   = r2_score(y_true, y_pred)
+    return mae, rmse, r2
+
+# 각 모델의 예측 결과를 평가 함수로 계산
+dt_mae, dt_rmse, dt_r2 = eval_reg(y_test, dt_reg.predict(X_test))
+rf_mae, rf_rmse, rf_r2 = eval_reg(y_test, rf_reg.predict(X_test))
+lr_mae, lr_rmse, lr_r2 = eval_reg(y_test, lr_reg.predict(X_test))
+
+# -----------------------------
+# 5) 결과 출력
+# -----------------------------
+print("=== Test Metrics (Regression) ===")
+print("[Decision Tree]")
+print(f"MAE: {dt_mae:.3f} | RMSE: {dt_rmse:.3f} | R^2: {dt_r2:.3f}\n")
+
+print("[Random Forest]")
+print(f"MAE: {rf_mae:.3f} | RMSE: {rf_rmse:.3f} | R^2: {rf_r2:.3f}\n")
+
+print("[Linear Regression with Pipeline]")
+print(f"MAE: {lr_mae:.3f} | RMSE: {lr_rmse:.3f} | R^2: {lr_r2:.3f}")
