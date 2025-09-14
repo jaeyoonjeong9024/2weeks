@@ -1,0 +1,58 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler  # 👈 피처 스케일링을 위해 추가
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+# -----------------------------
+# 1) 데이터 준비
+# -----------------------------
+
+# 파일에 헤더가 있으므로 header=None, names=cols 삭제
+# 첫 번째 컬럼은 불필요한 인덱스이므로 index_col=0으로 지정하여 바로 제거
+df = pd.read_csv("/content/drive/MyDrive/breast_cancer.csv", index_col=0)
+
+# X: 'label' 컬럼을 제외한 모든 데이터 (문제지)
+X = df.drop(columns=["label"])
+# y: 'label' 컬럼 데이터 (정답지)
+y = df["label"]
+
+# --- 피처 스케일링 (StandardScaler) ---
+# 각 피처(컬럼)들의 값의 범위를 비슷하게 맞춰주는 작업
+# 모델의 성능과 안정성을 높여줍니다.
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# 스케일링된 데이터를 학습용과 테스트용으로 분리
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, stratify=y, random_state=42
+)
+
+# -----------------------------
+# 2) 모델 구성
+# -----------------------------
+dt = DecisionTreeClassifier(random_state=42)
+rf = RandomForestClassifier(n_estimators=200, random_state=42)
+lr = LogisticRegression(max_iter=500)
+
+# -----------------------------
+# 3) 모델 학습
+# -----------------------------
+# 스케일링된 학습 데이터로 모델들을 학습시킵니다.
+dt.fit(X_train, y_train)
+rf.fit(X_train, y_train)
+lr.fit(X_train, y_train)
+
+# -----------------------------
+# 4) 모델 평가
+# -----------------------------
+dt_acc = accuracy_score(y_test, dt.predict(X_test))
+rf_acc = accuracy_score(y_test, rf.predict(X_test))
+lr_acc = accuracy_score(y_test, lr.predict(X_test))
+
+print("=== Test Accuracy ===")
+print(f"Decision Tree : {dt_acc:.4f}")
+print(f"Random Forest : {rf_acc:.4f}")
+print(f"Logistic Reg. : {lr_acc:.4f}")
