@@ -1,0 +1,98 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
+# 1. 다양한 모델과 평가 도구 불러오기
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+# -----------------------------
+# 2. 데이터 준비 및 전처리
+# -----------------------------
+
+# 파일 불러오기
+df = pd.read_csv('weather.csv')
+
+# 'Location' 컬럼만 제거
+df = df.drop(columns=['Location'])
+
+# 'Date' 컬럼을 날짜 타입으로 변환 후 년, 월, 일로 분리
+df['Date'] = pd.to_datetime(df['Date'])
+df['Year'] = df['Date'].dt.year
+df['Month'] = df['Date'].dt.month
+df['Day'] = df['Date'].dt.day
+df = df.drop(columns=['Date']) # 기존 Date 컬럼은 제거
+
+# 결측치(NaN) 채우기
+# - 숫자형 데이터는 평균값으로 채움
+for col in df.select_dtypes(include='number').columns:
+    df[col] = df[col].fillna(df[col].mean())
+# - 문자형(범주형) 데이터는 가장 많이 등장하는 값(최빈값)으로 채움
+for col in df.select_dtypes(include='object').columns:
+    df[col] = df[col].fillna(df[col].mode()[0])
+
+# 문자형 데이터를 숫자로 변환 (Label Encoding)
+categorical_columns = ['WindGustDir', 'WindDir9am', 'WindDir3pm', 'RainToday', 'RainTomorrow']
+for col in categorical_columns:
+    le = LabelEncoder()
+    df[col] = le.fit_transform(df[col])
+
+# -----------------------------
+# 3. 데이터 분리
+# -----------------------------
+
+# 입력(X)과 정답(y) 데이터 분리
+X = df.drop(columns=['RainTomorrow'])
+y = df['RainTomorrow']
+
+# 훈련용과 테스트용 데이터 분리 (8:2 비율, y의 비율을 유지하며 분리)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
+)
+
+# -----------------------------
+# 4. 모델 구성 및 학습
+# -----------------------------
+
+# 3개의 모델 생성
+dt_model = DecisionTreeClassifier(random_state=42)
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42) # n_estimators: 만들 트리의 개수
+lr_model = LogisticRegression(max_iter=1000) # max_iter: 모델이 최적의 해를 찾기 위해 시도할 최대 횟수
+
+# 모델 학습
+print("--- 모델 학습 시작 ---")
+dt_model.fit(X_train, y_train)
+rf_model.fit(X_train, y_train)
+lr_model.fit(X_train, y_train)
+print("--- 모델 학습 완료 ---")
+
+# -----------------------------
+# 5. 예측 및 평가
+# -----------------------------
+
+# 테스트 데이터로 예측 수행
+dt_pred = dt_model.predict(X_test)
+rf_pred = rf_model.predict(X_test)
+lr_pred = lr_model.predict(X_test)
+
+# 각 모델의 정확도 계산
+dt_acc = accuracy_score(y_test, dt_pred)
+rf_acc = accuracy_score(y_test, rf_pred)
+lr_acc = accuracy_score(y_test, lr_pred)
+
+# 최종 결과 출력
+print("\n--- 모델별 예측 정확도 및 혼동 행렬 ---")
+
+print("\n=== Decision Tree ===")
+print(f"정확도: {dt_acc:.4f}")
+print(confusion_matrix(y_test, dt_pred))
+
+print("\n=== Random Forest ===")
+print(f"정확도: {rf_acc:.4f}")
+print(confusion_matrix(y_test, rf_pred))
+
+print("\n=== Logistic Regression ===")
+print(f"정확도: {lr_acc:.4f}")
+print(confusion_matrix(y_test, lr_pred))
