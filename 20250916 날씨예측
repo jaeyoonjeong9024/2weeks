@@ -1,19 +1,20 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 
-# 1. 다양한 모델과 평가 도구 불러오기
+# 1. Scikit-Learn 라이브러리에서 필요한 도구들 불러오기
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.neighbors import KNeighborsClassifier      # KNN 모델 추가
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
 
-# -----------------------------
+# ---------------------------------
 # 2. 데이터 준비 및 전처리
-# -----------------------------
+# ---------------------------------
 
-# 파일 불러오기
-df = pd.read_csv('weather.csv')
+# Colab에 업로드된 weather.csv 파일을 불러옵니다.
+df = pd.read_csv("/content/drive/MyDrive/weather.csv")
 
 # 'Location' 컬럼만 제거
 df = df.drop(columns=['Location'])
@@ -39,60 +40,55 @@ for col in categorical_columns:
     le = LabelEncoder()
     df[col] = le.fit_transform(df[col])
 
-# -----------------------------
-# 3. 데이터 분리
-# -----------------------------
+# ---------------------------------
+# 3. 데이터 분리 및 스케일링
+# ---------------------------------
 
 # 입력(X)과 정답(y) 데이터 분리
 X = df.drop(columns=['RainTomorrow'])
 y = df['RainTomorrow']
 
-# 훈련용과 테스트용 데이터 분리 (8:2 비율, y의 비율을 유지하며 분리)
+# 입력(X) 데이터의 스케일을 표준화합니다. (KNN과 Logistic Regression 성능 향상에 도움)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# ---------------------------------
+# 4. 훈련 및 테스트 데이터 분리
+# ---------------------------------
+
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
+    X_scaled, y,         # 스케일링된 X와 숫자로 바뀐 y
+    test_size=0.2,       # 테스트 데이터 비율 20%
+    stratify=y,          # 원본 데이터의 비 유무 비율을 유지하며 분리
+    random_state=42      # 재현성을 위한 시드 고정
 )
 
-# -----------------------------
-# 4. 모델 구성 및 학습
-# -----------------------------
+# ---------------------------------
+# 5. 모델 학습 및 평가
+# ---------------------------------
 
-# 3개의 모델 생성
-dt_model = DecisionTreeClassifier(random_state=42)
-rf_model = RandomForestClassifier(n_estimators=100, random_state=42) # n_estimators: 만들 트리의 개수
-lr_model = LogisticRegression(max_iter=1000) # max_iter: 모델이 최적의 해를 찾기 위해 시도할 최대 횟수
+# 비교할 모델들을 딕셔너리 형태로 준비
+models = {
+    'KNN': KNeighborsClassifier(n_neighbors=5), # KNN 모델 추가 (k=5)
+    'Decision Tree': DecisionTreeClassifier(random_state=42),
+    'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),
+    'Logistic Regression': LogisticRegression(max_iter=1000)
+}
 
-# 모델 학습
-print("--- 모델 학습 시작 ---")
-dt_model.fit(X_train, y_train)
-rf_model.fit(X_train, y_train)
-lr_model.fit(X_train, y_train)
-print("--- 모델 학습 완료 ---")
-
-# -----------------------------
-# 5. 예측 및 평가
-# -----------------------------
-
-# 테스트 데이터로 예측 수행
-dt_pred = dt_model.predict(X_test)
-rf_pred = rf_model.predict(X_test)
-lr_pred = lr_model.predict(X_test)
-
-# 각 모델의 정확도 계산
-dt_acc = accuracy_score(y_test, dt_pred)
-rf_acc = accuracy_score(y_test, rf_pred)
-lr_acc = accuracy_score(y_test, lr_pred)
-
-# 최종 결과 출력
-print("\n--- 모델별 예측 정확도 및 혼동 행렬 ---")
-
-print("\n=== Decision Tree ===")
-print(f"정확도: {dt_acc:.4f}")
-print(confusion_matrix(y_test, dt_pred))
-
-print("\n=== Random Forest ===")
-print(f"정확도: {rf_acc:.4f}")
-print(confusion_matrix(y_test, rf_pred))
-
-print("\n=== Logistic Regression ===")
-print(f"정확도: {lr_acc:.4f}")
-print(confusion_matrix(y_test, lr_pred))
+# 반복문을 통해 각 모델을 학습하고 평가 결과를 출력
+for name, model in models.items():
+    # 모델 학습
+    model.fit(X_train, y_train)
+    
+    # 예측
+    y_pred = model.predict(X_test)
+    
+    # 평가
+    accuracy = accuracy_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+    
+    # 결과 출력
+    print(f"\n===== {name} 모델 평가 결과 =====")
+    print(f"정확도 (Accuracy): {accuracy:.4f}")
+    print("혼동 행렬 (Confusion Matrix):")
+    print(cm)
